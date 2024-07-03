@@ -511,7 +511,7 @@ def train(hyp, opt, device, callbacks):
         callbacks.run("on_train_end", last, best, epoch, results)
 
     torch.cuda.empty_cache()
-    return results
+    return results, best
 
 
 def parse_opt(known=False):
@@ -624,7 +624,7 @@ def main(opt, callbacks=Callbacks()):
 
     # Train
     if not opt.evolve:
-        train(opt.hyp, opt, device, callbacks)
+        results, model_path = train(opt.hyp, opt, device, callbacks)
 
     # Evolve hyperparameters (optional)
     else:
@@ -755,7 +755,7 @@ def main(opt, callbacks=Callbacks()):
                 for key, value in zip(hyp_GA.keys(), individual):
                     hyp_GA[key] = value
                 hyp.update(hyp_GA)
-                results = train(hyp.copy(), opt, device, callbacks)
+                results, model_path = train(hyp.copy(), opt, device, callbacks)
                 callbacks = Callbacks()
                 # Write mutation results
                 keys = (
@@ -823,6 +823,8 @@ def main(opt, callbacks=Callbacks()):
             f"Results saved to {colorstr('bold', save_dir)}\n"
             f'Usage example: $ python train.py --hyp {evolve_yaml}'
         )
+    
+    return model_path
 
 
 def generate_individual(input_ranges, individual_length):

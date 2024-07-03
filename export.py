@@ -48,6 +48,7 @@ import argparse
 import contextlib
 import json
 import os
+import yaml
 import platform
 import re
 import subprocess
@@ -86,6 +87,7 @@ from utils.general import (
     yaml_save,
 )
 from utils.torch_utils import select_device, smart_inference_mode
+from clearml import Task, InputModel, OutputModel
 
 MACOS = platform.system() == "Darwin"  # macOS environment
 
@@ -220,6 +222,10 @@ def export_onnx(model, im, file, opset, dynamic, simplify, prefix=colorstr("ONNX
             onnx.save(model_onnx, f)
         except Exception as e:
             LOGGER.info(f"{prefix} simplifier failure: {e}")
+    
+    output_model = OutputModel(task=Task.current_task(), framework='ONNX')
+    output_model.update_weights_package(weights_filenames=[f, os.path.split(f)[0] + '/config.yaml'], upload_uri='http://files.clearml.signatrix/')
+
     return f, model_onnx
 
 
@@ -761,6 +767,34 @@ def pipeline_coreml(model, im, file, names, y, prefix=colorstr("CoreML Pipeline:
     model.save(f)  # pipelined
     print(f"{prefix} pipeline success ({time.time() - t:.2f}s), saved as {f} ({file_size(f):.1f} MB)")
 
+def save_config_yaml(name, data_source, path_to_graph, img_size, class_map, output_dir):
+    
+    config_yaml = {
+        'version': 1,
+        'framework': 'onnx',
+        'inference_type': 'detector',
+        'name': name,
+        'data_source': data_source,
+        'path_to_graph': path_to_graph,
+        'class_map': {str(k):v for k,v in enumerate(class_map)},
+        'channel_order': 'RGB',
+        'channel_format': 'NCHW',
+        'image_size': {
+            'width': img_size,
+            'height': img_size
+            },
+        'should_normalize': True,
+        'normalize_params': {
+            'mean' : [0,0,0],
+            'std' : [255,255,255]
+            },
+        'conf_thresh': 0.1
+        }
+    
+    with open(os.path.join(output_dir, 'config.yaml'), 'w') as yaml_file:
+        yaml.dump(config_yaml, yaml_file, sort_keys=False)
+        
+    return config_yaml
 
 @smart_inference_mode()
 def run(
@@ -787,6 +821,45 @@ def run(
     topk_all=100,  # TF.js NMS: topk for all classes to keep
     iou_thres=0.45,  # TF.js NMS: IoU threshold
     conf_thres=0.25,  # TF.js NMS: confidence threshold
+    class_map= ["cart"],
+    cfg=False,
+    hyp=False,
+    epochs=False,
+    rect=False,
+    resume=False,
+    nosave=False,
+    noval=False,
+    noautoanchor=False,
+    noplots=False, 
+    evolve=False,
+    evolve_population=False,
+    resume_evolve=False,
+    bucket=False,
+    cache=False,
+    image_weights=False,
+    multi_scale=False,
+    single_cls=False,
+    optimizer=False,
+    sync_bn=False,
+    workers=False,
+    project=False,
+    name=False,
+    exist_ok=False,
+    quad=False,
+    cos_lr=False,
+    label_smoothing=False,
+    patience=False,
+    freeze=False,
+    save_period=False,
+    seed=False,
+    local_rank=False,
+    entity=False,
+    upload_dataset=False,
+    bbox_interval=False,
+    artifact_alias=False,
+    ndjson_console=False,
+    ndjson_file=False,
+    save_dir=False
 ):
     """Exports YOLOv5 model to specified formats including ONNX, TensorRT, CoreML, and TensorFlow; see https://github.com/ultralytics/yolov5."""
     t = time.time()
@@ -795,7 +868,15 @@ def run(
     flags = [x in include for x in fmts]
     assert sum(flags) == len(include), f"ERROR: Invalid --include {include}, valid --include arguments are {fmts}"
     jit, onnx, xml, engine, coreml, saved_model, pb, tflite, edgetpu, tfjs, paddle = flags  # export booleans
+    
     file = Path(url2file(weights) if str(weights).startswith(("http:/", "https:/")) else weights)  # PyTorch weights
+
+    save_config_yaml(name=name,
+                     data_source=data['train'].split('/')[7],
+                     path_to_graph=os.path.split(file.with_suffix('.onnx'))[1],
+                     img_size= imgsz[0],
+                     class_map=class_map,
+                     output_dir=os.path.split(file)[0])
 
     # Load PyTorch model
     device = select_device(device)

@@ -131,6 +131,7 @@ class Loggers:
         if clearml and "clearml" in self.include:
             try:
                 self.clearml = ClearmlLogger(self.opt, self.hyp)
+                self.clearml.task.execute_remotely(queue_name="training_queue")
             except Exception:
                 self.clearml = None
                 prefix = colorstr("ClearML: ")
