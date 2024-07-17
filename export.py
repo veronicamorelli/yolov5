@@ -874,7 +874,7 @@ def run(
     print(data['train'])
 
     save_config_yaml(name=name,
-                     data_source=data['train'].split('/')[7],
+                     data_source=data['train'].split('/')[3],
                      path_to_graph=os.path.split(file.with_suffix('.onnx'))[1],
                      img_size= imgsz[0],
                      class_map=class_map,
