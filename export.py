@@ -224,7 +224,7 @@ def export_onnx(model, im, file, opset, dynamic, simplify, prefix=colorstr("ONNX
             LOGGER.info(f"{prefix} simplifier failure: {e}")
     
     output_model = OutputModel(task=Task.current_task(), framework='ONNX')
-    output_model.update_weights_package(weights_filenames=[f, os.path.split(f)[0] + '/config.yaml'], upload_uri='http://files.clearml.signatrix/')
+    output_model.update_weights_package(weights_filenames=[f, os.path.split(f)[0] + '/config.yaml'], upload_uri='http://gpu2.signatrix:8081/')
 
     return f, model_onnx
 
