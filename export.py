@@ -871,6 +871,8 @@ def run(
     
     file = Path(url2file(weights) if str(weights).startswith(("http:/", "https:/")) else weights)  # PyTorch weights
 
+    print(data['train'])
+
     save_config_yaml(name=name,
                      data_source=data['train'].split('/')[7],
                      path_to_graph=os.path.split(file.with_suffix('.onnx'))[1],
